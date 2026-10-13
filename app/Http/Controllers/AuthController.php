@@ -12,7 +12,7 @@ class AuthController extends Controller
     
         $allowedDomains = config('registration.allowed_email_domains');
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:100'],
+            'name' => ['required', 'string', 'max:60'],
             'email' => [
                 'required', 
                 'email', 
