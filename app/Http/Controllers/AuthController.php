@@ -76,6 +76,53 @@ class AuthController extends Controller
         return response()->json($this->userData($request->user()));
     }
 
+        public function destroy(Request $request): JsonResponse
+    {
+        $request->validate([
+            'password' => ['required', 'string'],
+        ]);
+
+        $user = $request->user();
+
+        if (! Hash::check($request->input('password'), $user->password)) {
+            return response()->json(['message' => 'Wachtwoord klopt niet.'], 422);
+        }
+
+        DB::transaction(function () use ($user) {
+            $user->tokens()->delete();
+            $user->delete();
+        });
+
+        return response()->json(['message' => 'Account verwijderd.']);
+    }
+
+        public function updatePassword(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'current_password' => ['required', 'string'],
+            'password' => ['required', 'string', 'min:8', 'confirmed', 'different:current_password'],
+        ], [
+            'current_password.required' => 'Vul je huidige wachtwoord in.',
+            'password.required' => 'Vul een nieuw wachtwoord in.',
+            'password.min' => 'Je nieuwe wachtwoord moet minstens 8 tekens zijn.',
+            'password.confirmed' => 'De twee nieuwe wachtwoorden komen niet overeen.',
+            'password.different' => 'Je nieuwe wachtwoord moet anders zijn dan je huidige.',
+        ]);
+
+        $user = $request->user();
+
+        if (! Hash::check($validated['current_password'], $user->password)) {
+            return response()->json(['message' => 'Je huidige wachtwoord klopt niet.'], 422);
+        }
+
+        $user->update(['password' => $validated['password']]);
+
+        $currentId = $user->currentAccessToken()?->id;
+        $user->tokens()->when($currentId, fn ($q) => $q->where('id', '!=', $currentId))->delete();
+
+        return response()->json(['message' => 'Wachtwoord gewijzigd.']);
+    }
+
     private function userData(User $user): array
     {
         return [

@@ -13,6 +13,8 @@ Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10
 // Alleen met geldige token (Authorization: Bearer ...)
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'me']);
+    Route::delete('/user', [AuthController::class, 'destroy'])->middleware('throttle:5,1');
+    Route::put('/user/password', [AuthController::class, 'updatePassword'])->middleware('throttle:5,1');
     Route::post('/logout', [AuthController::class, 'logout']);
 
     Route::get('/profile', [ProfileController::class, 'show']);
