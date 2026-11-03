@@ -10,6 +10,10 @@ use Illuminate\Support\Facades\Route;
 Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:10,1');
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
 
+
+// Profielfoto's (openbaar, want een <img> kan geen token meesturen)
+Route::get('/photos/{file}', [ProfileController::class, 'photo'])
+    ->where('file', '[A-Za-z0-9._-]+');
 // Alleen met geldige token (Authorization: Bearer ...)
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'me']);

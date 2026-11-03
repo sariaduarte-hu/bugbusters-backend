@@ -83,6 +83,17 @@ class ProfileController extends Controller
         return response()->json($this->format($user->fresh('profile')));
     }
 
+    public function photo(string $file)
+    {
+        $path = 'avatars/'.$file;
+
+        abort_unless(Storage::disk('public')->exists($path), 404);
+
+        return Storage::disk('public')->response($path, null, [
+            'Cache-Control' => 'public, max-age=31536000, immutable',
+        ]);
+    }
+
     public function showUser(Request $request, User $user): JsonResponse
     {
         $profile = $user->profile;

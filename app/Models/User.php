@@ -29,8 +29,7 @@ class User extends Authenticatable
     {
         $photo = $this->profile?->photo;
 
-        return $photo ? Storage::disk('public')->url($photo) : null;
-    }
+        return $photo ? '/api/photos/'.basename($photo) : null;    }
 
     public function toPerson(): array
     {
