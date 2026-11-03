@@ -13,16 +13,13 @@ class PollController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $polls = Poll::with(['options' => fn ($q) => $q->withCount('votes')->orderBy('id')])
+        $polls = Poll::with($this->relations())
             ->latest()
             ->latest('id')
             ->get();
 
-        $myVotes = PollVote::where('user_id', $request->user()->id)
-            ->pluck('poll_option_id', 'poll_id');
-
         return response()->json(
-            $polls->map(fn (Poll $poll) => $this->format($poll, $request->user()->id, $myVotes[$poll->id] ?? null))
+            $polls->map(fn (Poll $poll) => $this->format($poll, $request->user()->id))
         );
     }
 
@@ -60,9 +57,9 @@ class PollController extends Controller
             return $poll;
         });
 
-        $poll->load(['options' => fn ($q) => $q->withCount('votes')->orderBy('id')]);
+        $poll->load($this->relations());
 
-        return response()->json($this->format($poll, $request->user()->id, null), 201);
+        return response()->json($this->format($poll, $request->user()->id), 201);
     }
 
     /**
@@ -92,9 +89,9 @@ class PollController extends Controller
             );
         }
 
-        $poll->load(['options' => fn ($q) => $q->withCount('votes')->orderBy('id')]);
+        $poll->load($this->relations());
 
-        return response()->json($this->format($poll, $userId, $optionId));
+        return response()->json($this->format($poll, $userId));
     }
 
     public function destroy(Request $request, Poll $poll): JsonResponse
@@ -110,19 +107,38 @@ class PollController extends Controller
         return response()->json(null, 204);
     }
 
-    private function format(Poll $poll, int $userId, ?int $myOptionId): array
+    private function relations(): array
     {
+        return [
+            'creator',
+            'options' => fn ($q) => $q->orderBy('id'),
+            'options.votes' => fn ($q) => $q->orderBy('id'),
+            'options.votes.user',
+        ];
+    }
+
+    private function format(Poll $poll, int $userId): array
+    {
+        $myVote = $poll->options
+            ->first(fn ($option) => $option->votes->contains('user_id', $userId))
+            ?->id;
+
         return [
             'id' => $poll->id,
             'question' => $poll->question,
             'color' => $poll->color,
             'is_owner' => $poll->user_id === $userId,
-            'my_vote' => $myOptionId,
+            'creator' => $poll->creator?->toPerson(),
+            'my_vote' => $myVote,
             'created_at' => $poll->created_at,
-            'options' => $poll->options->map(fn ($o) => [
-                'id' => $o->id,
-                'text' => $o->text,
-                'votes' => $o->votes_count,
+            'options' => $poll->options->map(fn ($option) => [
+                'id' => $option->id,
+                'text' => $option->text,
+                'votes' => $option->votes->count(),
+                'voters' => $option->votes
+                    ->map(fn ($vote) => $vote->user?->toPerson())
+                    ->filter()
+                    ->values(),
             ])->values(),
         ];
     }

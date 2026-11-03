@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Poll extends Model
 {
@@ -21,5 +22,10 @@ class Poll extends Model
     public function votes(): HasMany
     {
         return $this->hasMany(PollVote::class);
+    }
+
+     public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
     }
 }

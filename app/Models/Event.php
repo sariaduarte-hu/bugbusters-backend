@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Event extends Model
 {
@@ -33,5 +35,15 @@ class Event extends Model
         return Attribute::get(
             fn () => $this->user_id !== null && $this->user_id === auth()->id()
         );
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function attendees(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'event_signups')->withTimestamps();
     }
 }

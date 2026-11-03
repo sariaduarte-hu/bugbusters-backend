@@ -24,6 +24,11 @@ class User extends Authenticatable
         return $this->hasOne(Profile::class);
     }
 
+        public function toPerson(): array
+    {
+        return ['id' => $this->id, 'name' => $this->name];
+    }
+
     /**
      * Get the attributes that should be cast.
      *

@@ -9,10 +9,12 @@ use Illuminate\Http\Request;
 
 class EventController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        $events = Event::with(['creator', 'attendees'])->orderBy('start')->get();
+
         return response()->json(
-            Event::orderBy('start')->get()
+            $events->map(fn (Event $event) => $this->format($event, $request->user()->id))
         );
     }
 
@@ -27,7 +29,7 @@ class EventController extends Controller
 
         $event = Event::create($validated + ['user_id' => $request->user()->id]);
 
-        return response()->json($event->refresh(), 201);
+        return response()->json($this->respondData($event, $request), 201);
     }
 
     public function destroy(Request $request, Event $event): JsonResponse
@@ -41,5 +43,45 @@ class EventController extends Controller
         $event->delete();
 
         return response()->json(null, 204);
+    }
+
+    public function signup(Request $request, Event $event): JsonResponse
+    {
+        if (($event->end ?? $event->start)->isPast()) {
+            return response()->json(['message' => 'Dit evenement is al afgelopen.'], 422);
+        }
+
+        $event->attendees()->syncWithoutDetaching([$request->user()->id]);
+
+        return response()->json($this->respondData($event, $request));
+    }
+
+    public function leave(Request $request, Event $event): JsonResponse
+    {
+        $event->attendees()->detach($request->user()->id);
+
+        return response()->json($this->respondData($event, $request));
+    }
+
+    private function respondData(Event $event, Request $request): array
+    {
+        return $this->format($event->load(['creator', 'attendees']), $request->user()->id);
+    }
+
+    private function format(Event $event, int $userId): array
+    {
+        return [
+            'id' => $event->id,
+            'title' => $event->title,
+            'start' => $event->start->toJSON(),
+            'end' => $event->end?->toJSON(),
+            'description' => $event->description,
+            'created_at' => $event->created_at?->toJSON(),
+            'is_owner' => $event->user_id !== null && $event->user_id === $userId,
+            'creator' => $event->creator?->toPerson(),
+            'attendees' => $event->attendees->map(fn ($user) => $user->toPerson())->values(),
+            'attendee_count' => $event->attendees->count(),
+            'is_attending' => $event->attendees->contains('id', $userId),
+        ];
     }
 }

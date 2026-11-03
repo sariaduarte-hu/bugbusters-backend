@@ -17,6 +17,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/user/password', [AuthController::class, 'updatePassword'])->middleware('throttle:5,1');
     Route::post('/logout', [AuthController::class, 'logout']);
 
+    Route::get('/users/{user}', [ProfileController::class, 'showUser']);
+    Route::post('/events/{event}/signup', [EventController::class, 'signup']);
+    Route::delete('/events/{event}/signup', [EventController::class, 'leave']);
+
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::put('/profile', [ProfileController::class, 'update']);
 

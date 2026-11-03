@@ -42,6 +42,21 @@ class ProfileController extends Controller
         return response()->json($this->format($user->fresh('profile')));
     }
 
+    public function showUser(Request $request, User $user): JsonResponse
+    {
+        $profile = $user->profile;
+
+        return response()->json([
+            'id' => $user->id,
+            'is_me' => $request->user()->id === $user->id,
+            'name' => $user->name,
+            'age' => $profile?->age,
+            'birthday' => $profile?->birthday?->format('Y-m-d'),
+            'about' => $profile?->about ?? '',
+            'hobbies' => $profile?->hobbies ?? [],
+        ]);
+    }
+
     private function format(User $user): array
     {
         $profile = $user->profile;
