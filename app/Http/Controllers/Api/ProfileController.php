@@ -7,6 +7,8 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ProfileController extends Controller
 {
@@ -42,6 +44,45 @@ class ProfileController extends Controller
         return response()->json($this->format($user->fresh('profile')));
     }
 
+    public function uploadPhoto(Request $request): JsonResponse
+    {
+        $request->validate([
+            'photo' => ['required', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+        ]);
+
+        $user = $request->user();
+        $file = $request->file('photo');
+
+        // Unieke bestandsnaam, zodat de browser nooit een oude foto uit de cache toont.
+        $path = $file->storeAs(
+            'avatars',
+            $user->id.'-'.Str::random(12).'.'.$file->extension(),
+            'public'
+        );
+
+        $oud = $user->profile?->photo;
+        $user->profile()->updateOrCreate([], ['photo' => $path]);
+
+        if ($oud) {
+            Storage::disk('public')->delete($oud);
+        }
+
+        return response()->json($this->format($user->fresh('profile')));
+    }
+
+    public function deletePhoto(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $oud = $user->profile?->photo;
+
+        if ($oud) {
+            Storage::disk('public')->delete($oud);
+            $user->profile()->update(['photo' => null]);
+        }
+
+        return response()->json($this->format($user->fresh('profile')));
+    }
+
     public function showUser(Request $request, User $user): JsonResponse
     {
         $profile = $user->profile;
@@ -50,6 +91,7 @@ class ProfileController extends Controller
             'id' => $user->id,
             'is_me' => $request->user()->id === $user->id,
             'name' => $user->name,
+            'photo_url' => $user->photoUrl(),
             'age' => $profile?->age,
             'birthday' => $profile?->birthday?->format('Y-m-d'),
             'about' => $profile?->about ?? '',
@@ -64,6 +106,7 @@ class ProfileController extends Controller
         return [
             'name' => $user->name,
             'email' => $user->email,
+            'photo_url' => $user->photoUrl(),
             'age' => $profile?->age,
             'birthday' => $profile?->birthday?->format('Y-m-d'),
             'about' => $profile?->about ?? '',

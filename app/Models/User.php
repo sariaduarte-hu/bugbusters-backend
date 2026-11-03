@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable(['name', 'email', 'password'])]
@@ -24,9 +25,20 @@ class User extends Authenticatable
         return $this->hasOne(Profile::class);
     }
 
-        public function toPerson(): array
+    public function photoUrl(): ?string
     {
-        return ['id' => $this->id, 'name' => $this->name];
+        $photo = $this->profile?->photo;
+
+        return $photo ? Storage::disk('public')->url($photo) : null;
+    }
+
+    public function toPerson(): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'photo_url' => $this->photoUrl(),
+        ];
     }
 
     /**

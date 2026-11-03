@@ -11,7 +11,7 @@ class EventController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $events = Event::with(['creator', 'attendees'])->orderBy('start')->get();
+        $events = Event::with(['creator.profile', 'attendees.profile'])->orderBy('start')->get();
 
         return response()->json(
             $events->map(fn (Event $event) => $this->format($event, $request->user()->id))
@@ -65,7 +65,7 @@ class EventController extends Controller
 
     private function respondData(Event $event, Request $request): array
     {
-        return $this->format($event->load(['creator', 'attendees']), $request->user()->id);
+        return $this->format($event->load(['creator.profile', 'attendees.profile']), $request->user()->id);
     }
 
     private function format(Event $event, int $userId): array

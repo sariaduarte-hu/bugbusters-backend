@@ -23,6 +23,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::put('/profile', [ProfileController::class, 'update']);
+    Route::post('/profile/photo', [ProfileController::class, 'uploadPhoto'])->middleware('throttle:20,1');
+    Route::delete('/profile/photo', [ProfileController::class, 'deletePhoto']);
 
     Route::get('/polls', [PollController::class, 'index']);
     Route::post('/polls', [PollController::class, 'store']);

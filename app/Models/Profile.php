@@ -13,6 +13,7 @@ class Profile extends Model
         'birthday',
         'about',
         'hobbies',
+        'photo',
     ];
 
     protected function casts(): array

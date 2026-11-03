@@ -110,9 +110,9 @@ class PollController extends Controller
     private function relations(): array
     {
         return [
-            'creator',
+            'creator.profile',
             'options' => fn ($q) => $q->orderBy('id'),
-            'options.votes' => fn ($q) => $q->orderBy('id'),
+            'options.votes.user.profile' => fn ($q) => $q->orderBy('id'),
             'options.votes.user',
         ];
     }
