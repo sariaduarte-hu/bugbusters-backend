@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class AuthController extends Controller
 {
@@ -76,7 +78,7 @@ class AuthController extends Controller
         return response()->json($this->userData($request->user()));
     }
 
-        public function destroy(Request $request): JsonResponse
+    public function destroy(Request $request): JsonResponse
     {
         $request->validate([
             'password' => ['required', 'string'],
@@ -88,15 +90,22 @@ class AuthController extends Controller
             return response()->json(['message' => 'Wachtwoord klopt niet.'], 422);
         }
 
+        $foto = $user->profile?->photo;
+
         DB::transaction(function () use ($user) {
             $user->tokens()->delete();
             $user->delete();
         });
 
+        // Het profiel zelf verdwijnt via de database; het fotobestand ruimen we hier op.
+        if ($foto) {
+            Storage::disk('public')->delete($foto);
+        }
+
         return response()->json(['message' => 'Account verwijderd.']);
     }
 
-        public function updatePassword(Request $request): JsonResponse
+    public function updatePassword(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'current_password' => ['required', 'string'],
