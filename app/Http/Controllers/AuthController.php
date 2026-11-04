@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\EmailVerificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -11,6 +12,10 @@ use Illuminate\Support\Facades\Storage;
 
 class AuthController extends Controller
 {
+    public function __construct(private readonly EmailVerificationService $verifications)
+    {
+    }
+
     public function register(Request $request): JsonResponse
     {
         $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
@@ -35,14 +40,62 @@ class AuthController extends Controller
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
-        $user = User::create($validated);
-        $user->profile()->create();
+        // Er wordt nog geen account aangemaakt: eerst moet de code uit de mail worden ingevuld.
+        $token = $this->verifications->beginRegistration(
+            $validated['name'],
+            $validated['email'],
+            Hash::make($validated['password']),
+        );
 
         return response()->json([
-            'message' => 'Registration successful.',
+            'message' => 'We hebben een code van 6 cijfers gestuurd naar '.$validated['email'].'.',
+            'verification_required' => true,
+            'email' => $validated['email'],
+            'verification_token' => $token,
+        ], 202);
+    }
+
+    public function verifyEmail(Request $request): JsonResponse
+    {
+        $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
+
+        $validated = $request->validate([
+            'email' => ['required', 'email'],
+            'code' => ['required', 'digits:6'],
+            'verification_token' => ['required', 'string'],
+        ], [
+            'code.required' => 'Vul de code van 6 cijfers in.',
+            'code.digits' => 'De code bestaat uit 6 cijfers.',
+        ]);
+
+        $user = $this->verifications->verify(
+            $validated['email'],
+            $validated['code'],
+            $validated['verification_token'],
+        );
+
+        return response()->json([
+            'message' => 'Je e-mailadres is bevestigd.',
             'token' => $user->createToken('web')->plainTextToken,
             'user' => $this->userData($user),
-        ], 201);
+        ]);
+    }
+
+    public function resendVerification(Request $request): JsonResponse
+    {
+        $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
+
+        $validated = $request->validate([
+            'email' => ['required', 'email'],
+            'verification_token' => ['required', 'string'],
+        ]);
+
+        $cooldown = $this->verifications->resend($validated['email'], $validated['verification_token']);
+
+        return response()->json([
+            'message' => 'We hebben een nieuwe code gestuurd.',
+            'cooldown' => $cooldown,
+        ]);
     }
 
     public function login(Request $request): JsonResponse
@@ -58,6 +111,16 @@ class AuthController extends Controller
             return response()->json([
                 'message' => 'E-mailadres of wachtwoord klopt niet.',
             ], 422);
+        }
+
+        // Account van voor de e-mailverificatie: eerst het adres bevestigen.
+        if ($user->email_verified_at === null) {
+            return response()->json([
+                'message' => 'Bevestig eerst je e-mailadres. We hebben een code gestuurd.',
+                'verification_required' => true,
+                'email' => $user->email,
+                'verification_token' => $this->verifications->beginForExistingUser($user),
+            ], 403);
         }
 
         return response()->json([

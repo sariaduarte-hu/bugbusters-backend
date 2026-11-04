@@ -51,6 +51,31 @@ tailscale serve status
 cd /var/www/bugbusters-backend && ./deploy.sh
 ```
 
+## E-mail instellen (verificatiecode)
+
+Bij registreren krijgt iemand een code van 6 cijfers per e-mail. Daarvoor moet de server mail kunnen versturen.
+Zonder dit werkt registreren niet (de gebruiker krijgt de melding dat de e-mail niet verstuurd kon worden).
+
+1. Kies een SMTP-dienst (bijv. Brevo, Mailgun, Resend, of een SMTP-account van school/je provider) en haal host, poort, gebruikersnaam en wachtwoord op.
+2. Zet in `.env` op de server:
+
+```
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.jouwdienst.nl
+MAIL_PORT=587
+MAIL_USERNAME=...
+MAIL_PASSWORD=...
+MAIL_FROM_ADDRESS="noreply@jouwdomein.nl"
+MAIL_FROM_NAME="CampusConnect"
+```
+
+3. `php artisan config:cache` (of gewoon `./deploy.sh`, die doet dat al).
+4. Test: registreer met een eigen `@student.hu.nl`-adres en kijk of de mail binnenkomt.
+
+Tip: de afzender (`MAIL_FROM_ADDRESS`) moet vaak bij je SMTP-dienst als geldig adres of domein zijn ingesteld, anders weigert die de mail of komt hij in de spam.
+
+**Bestaande accounts:** accounts van vóór deze functie hebben nog geen bevestigd adres. Bij hun volgende login krijgen ze dezelfde popup en bevestigen ze zo alsnog hun adres.
+
 ## Testen (vanaf een apparaat op je Tailscale-netwerk)
 
 ```bash
